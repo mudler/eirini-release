@@ -226,6 +226,13 @@ secrets:
   # A map of labels and encryption keys
   CC_DB_ENCRYPTION_KEYS: "~"
 
+  # The PEM-encoded certificate for secure TLS communication over external
+  # endpoints.
+  CC_PUBLIC_TLS_CERT: ~
+
+  # The PEM-encoded key for secure TLS communication over external endpoints.
+  CC_PUBLIC_TLS_CERT_KEY: ~
+
   # The PEM-encoded certificate for internal cloud controller traffic.
   # This value uses a generated default.
   CC_SERVER_CRT: ~
