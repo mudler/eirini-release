@@ -228,10 +228,10 @@ secrets:
 
   # The PEM-encoded certificate for secure TLS communication over external
   # endpoints.
-  CC_PUBLIC_TLS_CERT: ~
+  CC_PUBLIC_TLS_CERT: ""
 
   # The PEM-encoded key for secure TLS communication over external endpoints.
-  CC_PUBLIC_TLS_CERT_KEY: ~
+  CC_PUBLIC_TLS_CERT_KEY: ""
 
   # The PEM-encoded certificate for internal cloud controller traffic.
   # This value uses a generated default.
