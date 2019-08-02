@@ -66,7 +66,7 @@ metadata:
 
 spec:
   podManagementPolicy: "Parallel"
-  replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.cc_worker.count) 1) -}} 2 {{- else -}} {{ .Values.sizing.cc_worker.count }} {{- end }}
+  replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.cc_worker.count) 1) }}{{ 2 }}{{ else }}{{ .Values.sizing.cc_worker.count }}{{ end }}
   selector:
     matchLabels:
       skiff-role-name: "cc-worker"
@@ -118,6 +118,22 @@ spec:
           value: {{if ne (typeOf .Values.env.ALLOW_APP_SSH_ACCESS) "<nil>"}}{{if has (kindOf .Values.env.ALLOW_APP_SSH_ACCESS) (list "map" "slice")}}{{.Values.env.ALLOW_APP_SSH_ACCESS | toJson | quote}}{{else}}{{.Values.env.ALLOW_APP_SSH_ACCESS | quote}}{{end}}{{else}}{{fail "env.ALLOW_APP_SSH_ACCESS has not been set"}}{{end}}
         - name: "AZ_LABEL_NAME"
           value: {{if ne (typeOf .Values.env.AZ_LABEL_NAME) "<nil>"}}{{if has (kindOf .Values.env.AZ_LABEL_NAME) (list "map" "slice")}}{{.Values.env.AZ_LABEL_NAME | toJson | quote}}{{else}}{{.Values.env.AZ_LABEL_NAME | quote}}{{end}}{{else}}""{{end}}
+
+        {{- if not .Values.secrets.BITS_ADMIN_USERS_PASSWORD }}
+        - name: "BITS_ADMIN_USERS_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "bits-admin-users-password"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.BITS_ADMIN_USERS_PASSWORD }}
+        - name: "BITS_ADMIN_USERS_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "bits-admin-users-password"
+              name: "secrets"
+        {{- end }}
 
         {{- if not .Values.secrets.BLOBSTORE_PASSWORD }}
         - name: "BLOBSTORE_PASSWORD"
@@ -198,8 +214,6 @@ spec:
           value: {{if ne (typeOf .Values.env.DISABLE_CUSTOM_BUILDPACKS) "<nil>"}}{{if has (kindOf .Values.env.DISABLE_CUSTOM_BUILDPACKS) (list "map" "slice")}}{{.Values.env.DISABLE_CUSTOM_BUILDPACKS | toJson | quote}}{{else}}{{.Values.env.DISABLE_CUSTOM_BUILDPACKS | quote}}{{end}}{{else}}{{fail "env.DISABLE_CUSTOM_BUILDPACKS has not been set"}}{{end}}
         - name: "DOMAIN"
           value: {{if ne (typeOf .Values.env.DOMAIN) "<nil>"}}{{if has (kindOf .Values.env.DOMAIN) (list "map" "slice")}}{{.Values.env.DOMAIN | toJson | quote}}{{else}}{{.Values.env.DOMAIN | quote}}{{end}}{{else}}{{fail "env.DOMAIN has not been set"}}{{end}}
-        - name: "ENABLE_OPI_STAGING"
-          value: {{if ne (typeOf .Values.env.ENABLE_OPI_STAGING) "<nil>"}}{{if has (kindOf .Values.env.ENABLE_OPI_STAGING) (list "map" "slice")}}{{.Values.env.ENABLE_OPI_STAGING | toJson | quote}}{{else}}{{.Values.env.ENABLE_OPI_STAGING | quote}}{{end}}{{else}}""{{end}}
         - name: "GARDEN_ROOTFS_DRIVER"
           value: {{if ne (typeOf .Values.env.GARDEN_ROOTFS_DRIVER) "<nil>"}}{{if has (kindOf .Values.env.GARDEN_ROOTFS_DRIVER) (list "map" "slice")}}{{.Values.env.GARDEN_ROOTFS_DRIVER | toJson | quote}}{{else}}{{.Values.env.GARDEN_ROOTFS_DRIVER | quote}}{{end}}{{else}}{{fail "env.GARDEN_ROOTFS_DRIVER has not been set"}}{{end}}
 
@@ -357,7 +371,7 @@ spec:
           value: {{ .Values.kube.limits.nproc.hard | quote }}
         - name: "VCAP_SOFT_NPROC"
           value: {{ .Values.kube.limits.nproc.soft | quote }}
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-cc-worker:2900e26538e9db95158abe5597e5996fa3efb7a4"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-cc-worker:aa15c7e2c9b6b7e1902c90c2a9e1c2fff9efe4b3"
         lifecycle:
           preStop:
             exec:
@@ -390,6 +404,7 @@ spec:
             {{- end }}
 
         securityContext:
+          allowPrivilegeEscalation: true
           privileged: true
         volumeMounts:
         - mountPath: "/opt/fissile/config"
@@ -520,7 +535,7 @@ spec:
           value: {{ .Values.kube.limits.nproc.hard | quote }}
         - name: "VCAP_SOFT_NPROC"
           value: {{ .Values.kube.limits.nproc.soft | quote }}
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-loggregator-agent:5de06807231fdef4272d70c9b3db18b7b66ab832"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-loggregator-agent:d550128f02f336b7845e8a80330094ae212ddf2f"
         lifecycle:
           preStop:
             exec:
@@ -550,18 +565,25 @@ spec:
             {{- end }}
 
         securityContext:
+          allowPrivilegeEscalation: true
           privileged: true
         volumeMounts:
         - mountPath: "/opt/fissile/config"
           name: "deployment-manifest"
           readOnly: true
       dnsPolicy: "ClusterFirst"
+
+      {{- if ne .Values.kube.registry.username "" }}
       imagePullSecrets:
       - name: "registry-credentials"
-      restartPolicy: "Always"
-      {{- if and (eq (printf "%s" .Values.kube.auth) "rbac") (.Capabilities.APIVersions.Has "rbac.authorization.k8s.io/v1") }}
-      serviceAccountName: "default-privileged"
       {{- end }}
+
+      restartPolicy: "Always"
+
+      {{- if and (eq (printf "%s" .Values.kube.auth) "rbac") (.Capabilities.APIVersions.Has "rbac.authorization.k8s.io/v1") }}
+      serviceAccountName: "default"
+      {{- end }}
+
       terminationGracePeriodSeconds: 600
       volumes:
       - name: "deployment-manifest"

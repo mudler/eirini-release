@@ -249,20 +249,12 @@ spec:
               key: "uaa-ca-cert"
               name: "secrets"
 
-        {{- if .Values.secrets.UAA_CC_CLIENT_SECRET }}
-        - name: "UAA_CC_CLIENT_SECRET"
+        {{- if .Values.secrets.UAA_CLIENTS_CC_ROUTING_SECRET }}
+        - name: "UAA_CLIENTS_CC_ROUTING_SECRET"
           valueFrom:
             secretKeyRef:
-              key: "uaa-cc-client-secret"
+              key: "uaa-clients-cc-routing-secret"
               name: "secrets"
-        {{- end }}
-
-        {{- if not .Values.secrets.UAA_CC_CLIENT_SECRET }}
-        - name: "UAA_CC_CLIENT_SECRET"
-          valueFrom:
-            secretKeyRef:
-              key: "uaa-cc-client-secret"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
         {{- if not .Values.secrets.UAA_CLIENTS_CC_ROUTING_SECRET }}
@@ -273,12 +265,12 @@ spec:
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
-        {{- if .Values.secrets.UAA_CLIENTS_CC_ROUTING_SECRET }}
-        - name: "UAA_CLIENTS_CC_ROUTING_SECRET"
+        {{- if not .Values.secrets.UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET }}
+        - name: "UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET"
           valueFrom:
             secretKeyRef:
-              key: "uaa-clients-cc-routing-secret"
-              name: "secrets"
+              key: "uaa-clients-cc-service-dashboards-client-secret"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
         {{- if .Values.secrets.UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET }}
@@ -287,14 +279,6 @@ spec:
             secretKeyRef:
               key: "uaa-clients-cc-service-dashboards-client-secret"
               name: "secrets"
-        {{- end }}
-
-        {{- if not .Values.secrets.UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET }}
-        - name: "UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET"
-          valueFrom:
-            secretKeyRef:
-              key: "uaa-clients-cc-service-dashboards-client-secret"
-              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
         {{- if .Values.secrets.UAA_CLIENTS_CC_SERVICE_KEY_CLIENT_SECRET }}
@@ -310,6 +294,22 @@ spec:
           valueFrom:
             secretKeyRef:
               key: "uaa-clients-cc-service-key-client-secret"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.UAA_CLIENTS_CF_SMOKE_TESTS_CLIENT_SECRET }}
+        - name: "UAA_CLIENTS_CF_SMOKE_TESTS_CLIENT_SECRET"
+          valueFrom:
+            secretKeyRef:
+              key: "uaa-clients-cf-smoke-tests-client-secret"
+              name: "secrets"
+        {{- end }}
+
+        {{- if not .Values.secrets.UAA_CLIENTS_CF_SMOKE_TESTS_CLIENT_SECRET }}
+        - name: "UAA_CLIENTS_CF_SMOKE_TESTS_CLIENT_SECRET"
+          valueFrom:
+            secretKeyRef:
+              key: "uaa-clients-cf-smoke-tests-client-secret"
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
@@ -409,19 +409,19 @@ spec:
               name: "secrets"
         {{- end }}
 
-        {{- if .Values.secrets.UAA_CLIENTS_LOGIN_SECRET }}
-        - name: "UAA_CLIENTS_LOGIN_SECRET"
+        {{- if .Values.secrets.UAA_CLIENTS_ROUTING_API_CLIENT_SECRET }}
+        - name: "UAA_CLIENTS_ROUTING_API_CLIENT_SECRET"
           valueFrom:
             secretKeyRef:
-              key: "uaa-clients-login-secret"
+              key: "uaa-clients-routing-api-client-secret"
               name: "secrets"
         {{- end }}
 
-        {{- if not .Values.secrets.UAA_CLIENTS_LOGIN_SECRET }}
-        - name: "UAA_CLIENTS_LOGIN_SECRET"
+        {{- if not .Values.secrets.UAA_CLIENTS_ROUTING_API_CLIENT_SECRET }}
+        - name: "UAA_CLIENTS_ROUTING_API_CLIENT_SECRET"
           valueFrom:
             secretKeyRef:
-              key: "uaa-clients-login-secret"
+              key: "uaa-clients-routing-api-client-secret"
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
@@ -481,7 +481,7 @@ spec:
           value: {{ .Values.kube.limits.nproc.hard | quote }}
         - name: "VCAP_SOFT_NPROC"
           value: {{ .Values.kube.limits.nproc.soft | quote }}
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-post-deployment-setup:d97ee100eebc13b2a44c17e818f89aa0d28bcf75"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-post-deployment-setup:1d252ddd65ebfdb24e4eeebb980550a86fb4fb58"
         lifecycle:
           preStop:
             exec:
@@ -511,30 +511,24 @@ spec:
             {{- end }}
 
         securityContext:
-          {{- if has "ALL" .Values.sizing.post_deployment_setup.capabilities }}
-          privileged: true
-          {{- end }}
-
-          {{- if not (has "ALL" .Values.sizing.post_deployment_setup.capabilities) }}
-          capabilities:
-            add:
-            {{- range .Values.sizing.post_deployment_setup.capabilities }}
-            - {{ . | upper }}
-            {{- end }}
-          {{- end }}
-
-          allowPrivilegeEscalation: {{ if has "ALL" .Values.sizing.post_deployment_setup.capabilities -}} true {{- else -}} false {{- end }}
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: "/opt/fissile/config"
           name: "deployment-manifest"
           readOnly: true
       dnsPolicy: "ClusterFirst"
+
+      {{- if ne .Values.kube.registry.username "" }}
       imagePullSecrets:
       - name: "registry-credentials"
+      {{- end }}
+
       restartPolicy: "OnFailure"
+
       {{- if and (eq (printf "%s" .Values.kube.auth) "rbac") (.Capabilities.APIVersions.Has "rbac.authorization.k8s.io/v1") }}
       serviceAccountName: "eirini"
       {{- end }}
+
       terminationGracePeriodSeconds: 600
       volumes:
       - name: "deployment-manifest"

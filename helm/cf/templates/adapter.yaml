@@ -148,7 +148,7 @@ metadata:
 
 spec:
   podManagementPolicy: "Parallel"
-  replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.adapter.count) 1) -}} 2 {{- else -}} {{ .Values.sizing.adapter.count }} {{- end }}
+  replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.adapter.count) 1) }}{{ 2 }}{{ else }}{{ .Values.sizing.adapter.count }}{{ end }}
   selector:
     matchLabels:
       skiff-role-name: "adapter"
@@ -287,7 +287,7 @@ spec:
           value: {{ .Values.kube.limits.nproc.hard | quote }}
         - name: "VCAP_SOFT_NPROC"
           value: {{ .Values.kube.limits.nproc.soft | quote }}
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-adapter:290f0c9cbbace30a663cbf4f15d1463bf2a9d69e"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-adapter:13fc0a8f0d805c82415c43220046e5110ee346a4"
         lifecycle:
           preStop:
             exec:
@@ -306,7 +306,7 @@ spec:
           exec:
             command:
             - "/opt/fissile/readiness-probe.sh"
-            - "curl --silent --fail --head http://${HOSTNAME}:8080/health"
+            - "curl --silent --fail --head http://localhost:8080/health"
         resources:
           requests:
             {{- if and .Values.config.memory.requests .Values.sizing.adapter.memory.request }}
@@ -327,6 +327,7 @@ spec:
             {{- end }}
 
         securityContext:
+          allowPrivilegeEscalation: true
           privileged: true
         volumeMounts:
         - mountPath: "/opt/fissile/config"
@@ -457,7 +458,7 @@ spec:
           value: {{ .Values.kube.limits.nproc.hard | quote }}
         - name: "VCAP_SOFT_NPROC"
           value: {{ .Values.kube.limits.nproc.soft | quote }}
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-loggregator-agent:5de06807231fdef4272d70c9b3db18b7b66ab832"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-loggregator-agent:d550128f02f336b7845e8a80330094ae212ddf2f"
         lifecycle:
           preStop:
             exec:
@@ -487,18 +488,25 @@ spec:
             {{- end }}
 
         securityContext:
+          allowPrivilegeEscalation: true
           privileged: true
         volumeMounts:
         - mountPath: "/opt/fissile/config"
           name: "deployment-manifest"
           readOnly: true
       dnsPolicy: "ClusterFirst"
+
+      {{- if ne .Values.kube.registry.username "" }}
       imagePullSecrets:
       - name: "registry-credentials"
-      restartPolicy: "Always"
-      {{- if and (eq (printf "%s" .Values.kube.auth) "rbac") (.Capabilities.APIVersions.Has "rbac.authorization.k8s.io/v1") }}
-      serviceAccountName: "default-privileged"
       {{- end }}
+
+      restartPolicy: "Always"
+
+      {{- if and (eq (printf "%s" .Values.kube.auth) "rbac") (.Capabilities.APIVersions.Has "rbac.authorization.k8s.io/v1") }}
+      serviceAccountName: "default"
+      {{- end }}
+
       terminationGracePeriodSeconds: 600
       volumes:
       - name: "deployment-manifest"

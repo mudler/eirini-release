@@ -70,7 +70,7 @@ metadata:
 
 spec:
   podManagementPolicy: "Parallel"
-  replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.cc_clock.count) 1) -}} 2 {{- else -}} {{ .Values.sizing.cc_clock.count }} {{- end }}
+  replicas: {{ if and .Values.config.HA (eq (int .Values.sizing.cc_clock.count) 1) }}{{ 2 }}{{ else }}{{ .Values.sizing.cc_clock.count }}{{ end }}
   selector:
     matchLabels:
       skiff-role-name: "cc-clock"
@@ -122,6 +122,22 @@ spec:
           value: {{if ne (typeOf .Values.env.ALLOW_APP_SSH_ACCESS) "<nil>"}}{{if has (kindOf .Values.env.ALLOW_APP_SSH_ACCESS) (list "map" "slice")}}{{.Values.env.ALLOW_APP_SSH_ACCESS | toJson | quote}}{{else}}{{.Values.env.ALLOW_APP_SSH_ACCESS | quote}}{{end}}{{else}}{{fail "env.ALLOW_APP_SSH_ACCESS has not been set"}}{{end}}
         - name: "AZ_LABEL_NAME"
           value: {{if ne (typeOf .Values.env.AZ_LABEL_NAME) "<nil>"}}{{if has (kindOf .Values.env.AZ_LABEL_NAME) (list "map" "slice")}}{{.Values.env.AZ_LABEL_NAME | toJson | quote}}{{else}}{{.Values.env.AZ_LABEL_NAME | quote}}{{end}}{{else}}""{{end}}
+
+        {{- if not .Values.secrets.BITS_ADMIN_USERS_PASSWORD }}
+        - name: "BITS_ADMIN_USERS_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "bits-admin-users-password"
+              name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.BITS_ADMIN_USERS_PASSWORD }}
+        - name: "BITS_ADMIN_USERS_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "bits-admin-users-password"
+              name: "secrets"
+        {{- end }}
 
         {{- if not .Values.secrets.BLOBSTORE_PASSWORD }}
         - name: "BLOBSTORE_PASSWORD"
@@ -198,8 +214,6 @@ spec:
           value: {{if ne (typeOf .Values.env.DEFAULT_STACK) "<nil>"}}{{if has (kindOf .Values.env.DEFAULT_STACK) (list "map" "slice")}}{{.Values.env.DEFAULT_STACK | toJson | quote}}{{else}}{{.Values.env.DEFAULT_STACK | quote}}{{end}}{{else}}""{{end}}
         - name: "DOMAIN"
           value: {{if ne (typeOf .Values.env.DOMAIN) "<nil>"}}{{if has (kindOf .Values.env.DOMAIN) (list "map" "slice")}}{{.Values.env.DOMAIN | toJson | quote}}{{else}}{{.Values.env.DOMAIN | quote}}{{end}}{{else}}{{fail "env.DOMAIN has not been set"}}{{end}}
-        - name: "ENABLE_OPI_STAGING"
-          value: {{if ne (typeOf .Values.env.ENABLE_OPI_STAGING) "<nil>"}}{{if has (kindOf .Values.env.ENABLE_OPI_STAGING) (list "map" "slice")}}{{.Values.env.ENABLE_OPI_STAGING | toJson | quote}}{{else}}{{.Values.env.ENABLE_OPI_STAGING | quote}}{{end}}{{else}}""{{end}}
         - name: "GARDEN_ROOTFS_DRIVER"
           value: {{if ne (typeOf .Values.env.GARDEN_ROOTFS_DRIVER) "<nil>"}}{{if has (kindOf .Values.env.GARDEN_ROOTFS_DRIVER) (list "map" "slice")}}{{.Values.env.GARDEN_ROOTFS_DRIVER | toJson | quote}}{{else}}{{.Values.env.GARDEN_ROOTFS_DRIVER | quote}}{{end}}{{else}}{{fail "env.GARDEN_ROOTFS_DRIVER has not been set"}}{{end}}
 
@@ -246,20 +260,20 @@ spec:
         - name: "MAX_APP_DISK_IN_MB"
           value: {{if ne (typeOf .Values.env.MAX_APP_DISK_IN_MB) "<nil>"}}{{if has (kindOf .Values.env.MAX_APP_DISK_IN_MB) (list "map" "slice")}}{{.Values.env.MAX_APP_DISK_IN_MB | toJson | quote}}{{else}}{{.Values.env.MAX_APP_DISK_IN_MB | quote}}{{end}}{{else}}{{fail "env.MAX_APP_DISK_IN_MB has not been set"}}{{end}}
 
-        {{- if .Values.secrets.MONIT_PASSWORD }}
-        - name: "MONIT_PASSWORD"
-          valueFrom:
-            secretKeyRef:
-              key: "monit-password"
-              name: "secrets"
-        {{- end }}
-
         {{- if not .Values.secrets.MONIT_PASSWORD }}
         - name: "MONIT_PASSWORD"
           valueFrom:
             secretKeyRef:
               key: "monit-password"
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.MONIT_PASSWORD }}
+        - name: "MONIT_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "monit-password"
+              name: "secrets"
         {{- end }}
 
         {{- if not .Values.secrets.MYSQL_CCDB_ROLE_PASSWORD }}
@@ -289,14 +303,6 @@ spec:
         - name: "STAGING_TIMEOUT"
           value: {{if ne (typeOf .Values.env.STAGING_TIMEOUT) "<nil>"}}{{if has (kindOf .Values.env.STAGING_TIMEOUT) (list "map" "slice")}}{{.Values.env.STAGING_TIMEOUT | toJson | quote}}{{else}}{{.Values.env.STAGING_TIMEOUT | quote}}{{end}}{{else}}{{fail "env.STAGING_TIMEOUT has not been set"}}{{end}}
 
-        {{- if .Values.secrets.STAGING_UPLOAD_PASSWORD }}
-        - name: "STAGING_UPLOAD_PASSWORD"
-          valueFrom:
-            secretKeyRef:
-              key: "staging-upload-password"
-              name: "secrets"
-        {{- end }}
-
         {{- if not .Values.secrets.STAGING_UPLOAD_PASSWORD }}
         - name: "STAGING_UPLOAD_PASSWORD"
           valueFrom:
@@ -305,19 +311,19 @@ spec:
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
         {{- end }}
 
+        {{- if .Values.secrets.STAGING_UPLOAD_PASSWORD }}
+        - name: "STAGING_UPLOAD_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "staging-upload-password"
+              name: "secrets"
+        {{- end }}
+
         - name: "UAA_CA_CERT"
           valueFrom:
             secretKeyRef:
               key: "uaa-ca-cert"
               name: "secrets"
-
-        {{- if .Values.secrets.UAA_CLIENTS_CC_ROUTING_SECRET }}
-        - name: "UAA_CLIENTS_CC_ROUTING_SECRET"
-          valueFrom:
-            secretKeyRef:
-              key: "uaa-clients-cc-routing-secret"
-              name: "secrets"
-        {{- end }}
 
         {{- if not .Values.secrets.UAA_CLIENTS_CC_ROUTING_SECRET }}
         - name: "UAA_CLIENTS_CC_ROUTING_SECRET"
@@ -325,6 +331,14 @@ spec:
             secretKeyRef:
               key: "uaa-clients-cc-routing-secret"
               name: "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+        {{- end }}
+
+        {{- if .Values.secrets.UAA_CLIENTS_CC_ROUTING_SECRET }}
+        - name: "UAA_CLIENTS_CC_ROUTING_SECRET"
+          valueFrom:
+            secretKeyRef:
+              key: "uaa-clients-cc-routing-secret"
+              name: "secrets"
         {{- end }}
 
         {{- if not .Values.secrets.UAA_CLIENTS_CC_SERVICE_DASHBOARDS_CLIENT_SECRET }}
@@ -355,7 +369,7 @@ spec:
           value: {{ .Values.kube.limits.nproc.hard | quote }}
         - name: "VCAP_SOFT_NPROC"
           value: {{ .Values.kube.limits.nproc.soft | quote }}
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-cc-clock:9e1573bbfeb73009321359587e90792cbad294b0"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-cc-clock:00dc71529b09f632728d9def2269e2b9d4a98815"
         lifecycle:
           preStop:
             exec:
@@ -388,6 +402,7 @@ spec:
             {{- end }}
 
         securityContext:
+          allowPrivilegeEscalation: true
           privileged: true
         volumeMounts:
         - mountPath: "/opt/fissile/config"
@@ -518,7 +533,7 @@ spec:
           value: {{ .Values.kube.limits.nproc.hard | quote }}
         - name: "VCAP_SOFT_NPROC"
           value: {{ .Values.kube.limits.nproc.soft | quote }}
-        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-loggregator-agent:5de06807231fdef4272d70c9b3db18b7b66ab832"
+        image: "{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/scf-loggregator-agent:d550128f02f336b7845e8a80330094ae212ddf2f"
         lifecycle:
           preStop:
             exec:
@@ -548,18 +563,25 @@ spec:
             {{- end }}
 
         securityContext:
+          allowPrivilegeEscalation: true
           privileged: true
         volumeMounts:
         - mountPath: "/opt/fissile/config"
           name: "deployment-manifest"
           readOnly: true
       dnsPolicy: "ClusterFirst"
+
+      {{- if ne .Values.kube.registry.username "" }}
       imagePullSecrets:
       - name: "registry-credentials"
-      restartPolicy: "Always"
-      {{- if and (eq (printf "%s" .Values.kube.auth) "rbac") (.Capabilities.APIVersions.Has "rbac.authorization.k8s.io/v1") }}
-      serviceAccountName: "default-privileged"
       {{- end }}
+
+      restartPolicy: "Always"
+
+      {{- if and (eq (printf "%s" .Values.kube.auth) "rbac") (.Capabilities.APIVersions.Has "rbac.authorization.k8s.io/v1") }}
+      serviceAccountName: "default"
+      {{- end }}
+
       terminationGracePeriodSeconds: 600
       volumes:
       - name: "deployment-manifest"
